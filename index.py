@@ -1,6 +1,6 @@
 import numpy as np
-import matplotlib.pyplot as plt
 from sympy import symbols, diff, lambdify, sympify, sqrt, exp
+import plotly.graph_objects as go
 
 def main_thermal_physics_simulation():
     x_sym, y_sym, z_sym_var = symbols('x y z')
@@ -72,11 +72,6 @@ def main_thermal_physics_simulation():
     Z_vals = f_z(X, Y)
     if np.isscalar(Z_vals): Z_vals = np.full_like(X, Z_vals)
     
-    eps = 1e-5
-    if np.nanmin(Z_vals) > eps or np.nanmax(Z_vals) < -eps:
-        print("\n[LỖI] Thiết kế không hợp lệ (Mặt không cắt z=0).")
-        return
-
     # 6. TÍNH TOÁN TÍCH PHÂN
     print("\n[BƯỚC 5] THỰC THI TÍCH PHÂN SỐ HỌC")
     mask_top = Z_vals >= 0
@@ -109,21 +104,95 @@ def main_thermal_physics_simulation():
     print("="*45)
 
     # Hiển thị 3D
-    fig = plt.figure(figsize=(12, 8))
-    ax = fig.add_subplot(111, projection='3d')
-    Z_plot = Z_vals.copy(); Z_plot[mask_base] = np.nan
+    # 1. Vẽ mặt trên (Top surface)
+    Z_plot = Z_vals.copy()
+    Z_plot[mask_base] = np.nan
+
+    top_surface = go.Surface(
+        x=X, y=Y, z=Z_plot,
+        colorscale='Hot',
+        colorbar=dict(title='Nhiệt độ °C', x=0.85),
+        name='Bề mặt tản nhiệt',
+        showscale=True
+    )
+
+    # 2. Vẽ mặt đáy (Base surface) - Dạng khối đặc màu tối
+    base_surface = go.Surface(
+        x=X, y=Y, z=np.zeros_like(X),
+        colorscale=[[0, 'rgb(80,80,80)'], [1, 'rgb(80,80,80)']],
+        showscale=False,
+        name='Đáy',
+        hoverinfo='skip', # Bỏ qua popup khi trỏ chuột vào đáy
+        opacity=0.5
+    )
+
+    # 3. Vẽ thành bao xung quanh (Side walls)
+    x_outer = X[:, -1]
+    y_outer = Y[:, -1]
+    # Chỉ lấy phần z >= 0 để không bị lẹm xuống dưới đáy
+    z_outer = np.maximum(Z_vals[:, -1], 0)
+
+    v_grid = np.linspace(0, 1, 30)
+    X_wall = np.outer(x_outer, np.ones_like(v_grid))
+    Y_wall = np.outer(y_outer, np.ones_like(v_grid))
+    Z_wall = np.outer(z_outer, v_grid)
+
+    wall_surface = go.Surface(
+        x=X_wall, y=Y_wall, z=Z_wall,
+        colorscale=[[0, 'rgb(180,180,180)'], [1, 'rgb(180,180,180)']],
+        showscale=False,
+        name='Thành bao',
+        hoverinfo='skip',
+        opacity=0.5
+    )
+
+    # 4. Vẽ vector thông lượng nhiệt (Plotly dùng go.Cone thay vì Quiver)
+    skip = 12
+    x_vec = X[mask_top][::skip]
+    y_vec = Y[mask_top][::skip]
+    z_vec = Z_vals[mask_top][::skip]
     
-    surf = ax.plot_surface(X, Y, Z_plot, cmap='hot', alpha=0.8)
-    ax.plot_surface(X, Y, np.zeros_like(X), color='cyan', alpha=0.2)
+    # Tính toán vector (hướng thẳng đứng lên trên, độ lớn theo F_z_vals)
+    u_vec = np.zeros_like(x_vec)
+    v_vec = np.zeros_like(x_vec)
+    w_raw = F_z_vals[mask_top][::skip]
+    
+    # Lọc bỏ các giá trị NaN để tránh lỗi khi vẽ Cone
+    valid_mask = ~np.isnan(w_raw)
+    x_vec, y_vec, z_vec = x_vec[valid_mask], y_vec[valid_mask], z_vec[valid_mask]
+    u_vec, v_vec, w_raw = u_vec[valid_mask], v_vec[valid_mask], w_raw[valid_mask]
 
-    skip = 15
-    ax.quiver(X[mask_top][::skip], Y[mask_top][::skip], Z_vals[mask_top][::skip], 
-              0, 0, F_z_vals[mask_top][::skip]/np.max(F_z_vals), 
-              length=0.3, color='blue', label='Heat Flux')
+    heat_flux = go.Cone(
+        x=x_vec, y=y_vec, z=z_vec,
+        u=u_vec, v=v_vec, w=w_raw,
+        colorscale='Blues',
+        sizemode="scaled",
+        sizeref=0.3,
+        showscale=False,
+        name='Vector tỏa nhiệt'
+    )
 
-    ax.set_title(f"Phân tích nhiệt Fourier: {mat_name}")
-    plt.colorbar(surf, label='Nhiệt độ tương đối')
-    plt.show()
+    # 5. Đóng gói và thiết lập khung nhìn (Layout)
+    fig = go.Figure(data=[top_surface, base_surface, wall_surface, heat_flux])
+
+    fig.update_layout(
+        title=f"<b>Mô phỏng tản nhiệt (Định luật Fourier) - {mat_name}</b>",
+        scene=dict(
+            xaxis_title='Trục X (m)',
+            yaxis_title='Trục Y (m)',
+            zaxis_title='Trục Z (Độ cao)',
+            aspectmode='manual',
+            aspectratio=dict(x=1, y=1, z=0.6),
+            camera=dict(
+                eye=dict(x=1.5, y=1.5, z=1.2)
+            )
+        ),
+        width=1000,
+        height=800,
+        margin=dict(l=0, r=0, b=0, t=50)
+    )
+
+    fig.show()
 
 if __name__ == "__main__":
     main_thermal_physics_simulation()
