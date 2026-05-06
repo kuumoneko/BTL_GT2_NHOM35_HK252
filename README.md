@@ -13,23 +13,17 @@ Trong thiết kế vi mạch và các thiết bị viễn thông công suất ca
 
 - **Mặt trên (S):**  
   Được xác định bởi phương trình:  
-  $$
-  z = f(x, y), \quad z \geq 0
-  $$  
+  $z = f(x, y), \quad z \geq 0$  
   Tại những vùng mà \(f(x, y) < 0\), linh kiện được coi là để hở bề mặt bo mạch phẳng (\(z = 0\)).
 
 - **Trường nhiệt độ (T):**  
   Nhiệt độ trong vật liệu giảm dần theo độ cao \(z\) theo quy luật hàm mũ:  
-  $$
-  T(z) = T_{\text{base}} \cdot e^{-\alpha z}
-  $$  
-  với \(T_{\text{base}}\) là nhiệt độ nguồn nhiệt tại đáy và \(\alpha\) là hệ số suy giảm nhiệt.
+  $T(z) = T_{\text{base}} \cdot e^{-\alpha z}$  
+  với $T_{base}$ là nhiệt độ nguồn nhiệt tại đáy và \(\alpha\) là hệ số suy giảm nhiệt.
 
 - **Vector dòng nhiệt (q):**  
   Tuân theo Định luật Fourier:  
-  $$
-  q = -k \nabla T
-  $$  
+  $q = -k \nabla T$  
   với \(k\) là độ dẫn nhiệt của vật liệu (Nhôm, Đồng hoặc Thép).
 
 # Điều kiện thực nghiệm
